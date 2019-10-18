@@ -1,0 +1,74 @@
+---
+- hosts: game
+  tasks:
+    - name: Make sure apt-transport-https is available
+      become: yes
+      package:
+        name: apt-transport-https
+        state: present
+    - name: Add SCION repository
+      become: yes
+      copy:
+        dest: /etc/apt/sources.list.d/scionlab.list
+        content: "deb [trusted=yes] https://packages.netsec.inf.ethz.ch/debian all main"
+      register: scionlab_repo
+    - name: Update apt cache packages
+      become: yes
+      apt:
+        upgrade: no
+        update_cache: yes
+      when: scionlab_repo.changed
+    - name: Make sure SCIONLab is installed
+      become: yes
+      package:
+        name: scionlab
+        state: present
+      when: scion_host_type is defined
+    - name: Prepare empty gen directory
+      become: yes
+      file:
+        state: directory
+        path: /etc/scion/gen
+        owner: scion
+        group: scion
+      when: scion_host_type is defined
+    - name: Add SCIONLab bootstrap config
+      become: yes
+      copy:
+        dest: /etc/scion/gen/scionlab-config.json
+        content: "{\"host_id\": \"{{ scionlab_host_id }}\", \"host_secret\": \"{{ scionlab_host_secret }}\", \"url\": \"https://www.scionlab.org\"}"
+      when: scion_host_type is defined
+    - name: Configure SCION
+      become: yes
+      shell: scionlab-config --force
+      when: scion_host_type is defined
+    - name: Restart SCION
+      become: yes
+      service:
+        name: scionlab.target
+        state: restarted
+        enabled: yes
+      when: scion_host_type is defined
+    - name: Install SSH keys for default user
+      become: yes
+      authorized_key:
+        user: "{{ ansible_user }}"
+        state: present
+        key: "{{ authorized_ssh_keys | join('\n') }}"
+        exclusive: true
+
+- name: Create game runner user
+  import_playbook: runner_user.yml
+
+- name: Set up Python
+  import_playbook: ./python.yml
+
+- name: Set up the master
+  import_playbook: ./master.yml
+
+- name: Set up the sources and sinks
+  import_playbook: ./source_and_sink.yml
+
+- name: Set up monitoring
+  import_playbook: ./monitoring.yml
+  when: scion_host_type is defined

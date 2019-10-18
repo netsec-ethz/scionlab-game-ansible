@@ -1,0 +1,35 @@
+all:
+  children:
+    as:
+      children:
+        game:
+          children:
+            game_master:
+              hosts:
+                master.chocobomb.example.com:
+                  ansible_host: 10.0.0.1
+            game_worker:
+              children:
+                isd1:
+                  hosts:
+                    worker-1.chocobomb.example.com:
+                      ansible_host: 10.0.0.2
+                      scionlab_host_id: chocobomb
+                      scionlab_host_secret: chocobomb
+                      scion_ia: 1-ffaa:1:abc
+                      scion_host_type: user_as
+                      rtt_to_next_hop: 0.3
+                      link_quality_to_next_hop_trust: 10
+                isd2:
+                  hosts:
+                    worker-2.chocobomb.example.com:
+                      ansible_host: 10.0.0.3
+                      scion_ia: 2-ffaa:1:def
+                      scion_host_type: endhost
+                      scionlab_host_id: chocobomb
+                      scionlab_host_secret: chocobomb
+                      scion_local_address: 192.168.0.1
+                      rtt_to_next_hop: 7.3
+                      link_quality_to_next_hop_trust: 9
+                      ec2_region: eu-central-1
+                      ec2_instance_id: i-chocobomb

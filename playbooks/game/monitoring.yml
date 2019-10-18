@@ -1,0 +1,11 @@
+---
+- hosts: game
+  tasks:
+    - name: Install telegraf for non-SCIONLab node
+      include_role:
+        name: dj-wasabi.telegraf
+        when: scion_host_type is not defined
+    - name: Install telegraf for SCIONLab node
+      include_role:
+        name: telegraf_scionlab
+        when: scion_host_type is defined

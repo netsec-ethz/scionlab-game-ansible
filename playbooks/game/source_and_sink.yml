@@ -1,0 +1,80 @@
+---
+- hosts: game_worker
+  tasks:
+
+    # - name: Delete any stale worker directories
+    #   file:
+    #     path: "{{buildbot_wrkdirs}}"
+    #     state: absent
+    #   become: yes
+
+    - name: Prepare worker directory
+      become: yes
+      file:
+        state: directory
+        path: "{{ buildbot_wrkdirs }}/worker-source-{{ inventory_hostname }}/run-player-source-{{ inventory_hostname }}/build"
+        owner: "{{ worker_user }}"
+        recurse: yes
+    - name: Copy C library
+      become: yes
+      synchronize:
+        src: scion_api.so
+        dest: "{{ buildbot_wrkdirs }}/worker-source-{{ inventory_hostname }}/run-player-source-{{ inventory_hostname }}/build/scion_api.so"
+        archive: no
+        checksum: yes
+    - name: Copy Py library
+      become: yes
+      copy:
+        src: pyscion.py
+        dest: "{{ buildbot_wrkdirs }}/worker-source-{{ inventory_hostname }}/run-player-source-{{ inventory_hostname }}/build/pyscion.py"
+    - name: Copy Sink
+      become: yes
+      synchronize:
+        src: sink
+        dest: /home/{{ worker_user }}/sink
+        archive: no
+        checksum: yes
+    - name: Add localhost to etc hosts
+      lineinfile:
+        path: /etc/hosts
+        regexp: '^{{ scion_ia }}'
+        line: "{{ scion_ia }},[{% if scion_local_address is defined %}{{ scion_local_address }}{% else %}{{ ansible_host }}{% endif %}] localhost"
+      become: true
+
+    - name: Create Buildbot worker
+      become: yes
+      become_user: "{{ worker_user }}"
+      command:
+        argv:
+          - 'buildbot-worker'
+          - 'create-worker'
+          - '-f'                                              # use the existing dir instead of making a new one
+          - "{{ buildbot_wrkdirs }}/worker-{{ item }}-{{ inventory_hostname }}"  # working dir
+          - "{{ buildbot_master_host }}"                        # master host
+          - "{{ item }}-{{ inventory_hostname }}"                 # worker name     (identification for master)
+          - "{{ buildbot_workers_secret }}"                     # worker password (auth with master)
+      with_items:
+        - source
+        - sink
+
+    - name: Start Buildbot worker
+      become: yes
+      become_user: "{{ worker_user }}"
+      command:
+        argv:
+          - 'buildbot-worker'
+          - 'start'
+          - "{{ buildbot_wrkdirs }}/worker-{{ item }}-{{ inventory_hostname }}"
+      with_items:
+        - source
+        - sink
+      ignore_errors: yes
+
+    - name: Check if sink is running
+      shell: 'ps aux | grep "/[h]ome/{{ worker_user }}/sink"'
+      ignore_errors: yes
+      changed_when: false
+      register: sink_binary_status
+    - name: Start sink if needed
+      shell: "nohup /home/{{ worker_user }}/sink > /dev/null 2>&1 < /dev/null &"
+      when: sink_binary_status is failed

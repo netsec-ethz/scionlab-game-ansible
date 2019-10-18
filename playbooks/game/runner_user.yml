@@ -1,0 +1,19 @@
+---
+- hosts: game_worker
+  tasks:
+    - name: Create runner user (username {{ worker_user }})
+      become: yes
+      user:
+        name: "{{ worker_user }}"
+        comment: SCIONLab Game Runner User
+        shell: /bin/bash
+        home: /home/{{ worker_user }}
+        move_home: yes
+        system: no
+    - name: Install SSH keys for runner user
+      become: yes
+      authorized_key:
+        user: "{{ worker_user }}"
+        state: present
+        key: "{{ authorized_ssh_keys | join('\n') }}"
+        exclusive: true

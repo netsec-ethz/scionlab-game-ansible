@@ -1,0 +1,68 @@
+---
+ansible_user: ubuntu
+
+authorized_ssh_keys:
+  - "ssh-rsa AAAAA+chocobomb+BBBBB chocobomb@example.com"
+
+telegraf_agent_package_state: latest
+telegraf_agent_metric_buffer_limit: 100000
+telegraf_agent_hostname: "{{ inventory_hostname }}"
+telegraf_agent_interval: 30
+telegraf_agent_flush_interval: 60
+telegraf_agent_flush_jitter: 5
+
+telegraf_agent_package_state: latest
+# telegraf_agent_version: 1.11.3
+telegraf_agent_metric_buffer_limit: 100000
+telegraf_agent_hostname: "{{ inventory_hostname }}"
+telegraf_agent_interval: 30
+telegraf_agent_flush_interval: 60
+telegraf_agent_flush_jitter: 5
+telegraf_plugins_default:
+  - plugin: cpu
+    config:
+      - percpu = true
+  - plugin: disk
+    config:
+      - ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+  - plugin: diskio
+  - plugin: mem
+  - plugin: net
+  - plugin: netstat
+  - plugin: system
+  - plugin: linux_sysctl_fs
+  # - plugin: systemd_units
+  - plugin: swap
+  - plugin: netstat
+  - plugin: processes
+  - plugin: procstat
+    config:
+      - pattern = "^/usr/bin/beacon_server|^/usr/bin/border|^/usr/bin/cert_srv|^/usr/bin/dispatcher|^/usr/bin/path_srv|^/usr/bin/rainsd|^/usr/bin/sciond|^/usr/bin/sig"
+      - pid_tag = true
+  - plugin: kernel
+  - plugin: ping
+    config:
+      - urls = ["netsec.ethz.ch", "cern.ch"]
+      - count = 5
+  - plugin: ntpq
+    config:
+      - dns_lookup = false
+
+telegraf_agent_output:
+  - type: influxdb
+    config:
+      - urls = ["http://influx.chocobomb.example.com:8086"]
+      - database = "chocobomb"
+      - username = "chocobomb"
+      - password = "chocobomb"
+      - skip_database_creation = true
+      - timeout = "10s"
+
+# This overrides local IP for SCMP to workaround the bug
+# in dispatcher/br causing problems in NAT-ed environments
+scion_local_address: "{{ ansible_host }}"
+
+worker_user: runner
+buildbot_master_host:    "{{ hostvars[groups['game_master'][0]].ansible_host }}"
+buildbot_workers_secret: "chocobomb"
+buildbot_wrkdirs:        /tmp/buildbot-workers/

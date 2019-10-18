@@ -1,0 +1,16 @@
+---
+- hosts: game
+  tasks:
+
+    - name: Install pip
+      become: yes
+      package:
+        name: '{{ item }}'
+        state: present
+      with_items:
+        - python3-pip
+
+    - name: Install buildbot-worker
+      become: yes
+      pip:
+        name: buildbot-worker

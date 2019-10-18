@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  tasks:
+    # ansible-playbook ... --e "state=stopped"
+    - name: Control EC2 Instance(s)
+      ec2:
+        instance_ids: '{{ hostvars[item].ec2_instance_id }}'
+        state: "{{ state }}"
+        region: '{{ hostvars[item].ec2_region }}'
+        aws_access_key: "{{ lookup('env','AWS_ACCESS_KEY') }}"
+        aws_secret_key: "{{ lookup('env','AWS_SECRET_KEY') }}"
+      when: hostvars[item].ec2_instance_id is defined
+      loop: "{{ groups['all'] }}"

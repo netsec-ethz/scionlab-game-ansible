@@ -1,0 +1,8 @@
+---
+- hosts: game_master
+  tasks:
+
+    - name: Install pipenv
+      become: yes
+      pip:
+        name: pipenv
